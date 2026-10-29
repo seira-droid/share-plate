@@ -144,3 +144,4 @@ Household food sharing requires strict privacy protections:
    - `GET /food/nearby` always returns `approx_latitude`, `approx_longitude`, and `approx_location_name`.
    - `GET /food/listings/{id}` checks if `current_user.id == listing.seller_id` OR has a `CONFIRMED` reservation in the database.
    - Only when verified does the response deliver `exact_latitude`, `exact_longitude`, `pickup_address`, and `pickup_instructions`.
+

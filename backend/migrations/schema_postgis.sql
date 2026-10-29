@@ -98,3 +98,4 @@ CREATE INDEX IF NOT EXISTS idx_reservations_buyer_id ON reservations(buyer_id);
 -- WHERE status = 'ready'
 --   AND ST_DWithin(approx_geom::geography, ST_SetSRID(ST_MakePoint(-74.0060, 40.7128), 4326)::geography, 3000)
 -- ORDER BY distance_km ASC;
+

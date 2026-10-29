@@ -25,11 +25,11 @@ async def lifespan(app: FastAPI):
     try:
         init_demo_users(db)
         
-        # If database is empty, seed initial sample listings (e.g. downtown grid)
+        # If database is empty, seed initial sample Indian dishes around Bengaluru coordinates (12.9716, 77.5946)
         existing_count = db.query(FoodListing).count()
         if existing_count == 0:
-            logger.info("Seeding initial sample listings around downtown coordinates (40.7128, -74.0060)...")
-            seed_sample_listings(db, center_lat=40.7128, center_lon=-74.0060)
+            logger.info("Seeding initial Indian homemade dishes around coordinates (12.9716, 77.5946)...")
+            seed_sample_listings(db, center_lat=12.9716, center_lon=77.5946)
     finally:
         db.close()
         

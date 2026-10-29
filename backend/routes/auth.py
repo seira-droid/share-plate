@@ -10,36 +10,52 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 # Predefined demo profiles for easy multi-actor testing
 DEMO_USERS = [
     {
+        "id": "seller-priya",
+        "name": "Priya Nair (House #14B - Amma's Kitchen)",
+        "email": "priya.nair@foodshare.in",
+        "role": "seller",
+        "phone": "+91-98460-12345",
+        "avatar_url": "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+        "id": "seller-rajesh",
+        "name": "Chef Rajesh Sharma (House #31 - Punjabi Rasoi)",
+        "email": "rajesh.sharma@foodshare.in",
+        "role": "seller",
+        "phone": "+91-98100-54321",
+        "avatar_url": "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+        "id": "buyer-arun",
+        "name": "Arun Varghese (Foodie Neighbor)",
+        "email": "arun.varghese@foodshare.in",
+        "role": "buyer",
+        "phone": "+91-98950-88888",
+        "avatar_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80"
+    },
+    {
+        "id": "buyer-sneha",
+        "name": "Sneha Patel (Local Resident)",
+        "email": "sneha.patel@foodshare.in",
+        "role": "buyer",
+        "phone": "+91-98200-99999",
+        "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80"
+    },
+    {
         "id": "seller-alice",
         "name": "Alice Montgomery (Home Chef)",
         "email": "alice@foodshare.local",
         "role": "seller",
-        "phone": "+1-555-0192",
+        "phone": "+91-98765-43210",
         "avatar_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=200&q=80"
-    },
-    {
-        "id": "seller-bob",
-        "name": "Bob Rodriguez (Artisan Baker)",
-        "email": "bob@foodshare.local",
-        "role": "seller",
-        "phone": "+1-555-0143",
-        "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
     },
     {
         "id": "buyer-charlie",
         "name": "Charlie Patel (Foodie Neighbor)",
         "email": "charlie@foodshare.local",
         "role": "buyer",
-        "phone": "+1-555-0187",
-        "avatar_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80"
-    },
-    {
-        "id": "buyer-diana",
-        "name": "Diana Vance (Local Resident)",
-        "email": "diana@foodshare.local",
-        "role": "buyer",
-        "phone": "+1-555-0164",
-        "avatar_url": "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80"
+        "phone": "+91-98111-22233",
+        "avatar_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80"
     }
 ]
 
@@ -86,3 +102,4 @@ def list_available_users(db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserProfile)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+

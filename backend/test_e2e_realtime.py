@@ -17,11 +17,11 @@ def test_websocket_realtime_e2e_broadcast():
         init_msg = ws.receive_json()
         assert init_msg.get("event") == "connected"
 
-        # Subscribe to buyer's current coordinates
+        # Subscribe to buyer's current coordinates (Indiranagar Bengaluru)
         ws.send_json({
             "type": "subscribe_location",
-            "lat": 40.7128,
-            "lng": -74.0060,
+            "lat": 12.9784,
+            "lng": 77.6408,
             "radius_km": 5.0
         })
         filter_ack = ws.receive_json()
@@ -30,17 +30,21 @@ def test_websocket_realtime_e2e_broadcast():
         # 2. Seller Alice creates a new dish
         seller_headers = {"X-User-Id": "seller-alice"}
         create_res = client.post("/food/listings", json={
-            "food_name": "Hot Artisanal Ciabatta Loaves",
-            "description": "Double fermented with rosemary olive oil",
-            "category": "Bakery & Breads",
+            "food_name": "Hot Artisanal Kerala Porotta & Roast",
+            "description": "Slow cooked pepper chicken roast with 3 flaky porottas",
+            "category": "Kerala Homestyle",
+            "house_label": "House #14B (Amma's Kitchen)",
+            "portion_size": "3 Porottas + 250ml Curry",
+            "items_included": "3 Porottas, Chicken Roast, Onion Salad",
             "quantity_available": 4,
-            "price": 4.5,
+            "price": 160.0,
+            "currency": "₹",
             "status": "preparing",
-            "latitude": 40.7135,
-            "longitude": -74.0055,
-            "pickup_address": "Flat 2A, 10 Hudson Yard",
-            "approx_location_name": "Hudson Yards District",
-            "pickup_instructions": "Gate buzzer 2A. Still proofing in oven."
+            "latitude": 12.9785,
+            "longitude": 77.6410,
+            "pickup_address": "Flat 2A, 10 Indiranagar Main Road",
+            "approx_location_name": "Indiranagar 1st Stage",
+            "pickup_instructions": "Gate buzzer 2A. Still on the tawa."
         }, headers=seller_headers)
         assert create_res.status_code == 201
         listing_data = create_res.json()
@@ -50,9 +54,9 @@ def test_websocket_realtime_e2e_broadcast():
         ws_event_1 = ws.receive_json()
         assert ws_event_1.get("event") == "listing_created"
         assert ws_event_1["data"]["id"] == listing_id
-        assert ws_event_1["data"]["food_name"] == "Hot Artisanal Ciabatta Loaves"
+        assert ws_event_1["data"]["food_name"] == "Hot Artisanal Kerala Porotta & Roast"
+        assert ws_event_1["data"]["portion_size"] == "3 Porottas + 250ml Curry"
         assert ws_event_1["data"]["status"] == "preparing"
-        # Public privacy preserved: is_exact_location must be False!
         assert ws_event_1["data"]["is_exact_location"] is False
 
         # 3. Seller Alice marks "FOOD IS READY"
@@ -70,11 +74,11 @@ def test_websocket_realtime_e2e_broadcast():
         assert ws_event_2["data"]["status"] == "ready"
         assert ws_event_2["data"]["ready_at"] is not None
 
-        # 4. Buyer Charlie reserves a loaf
+        # 4. Buyer Charlie reserves a portion
         buyer_headers = {"X-User-Id": "buyer-charlie"}
         reserve_res = client.post(
             f"/food/listings/{listing_id}/reserve",
-            json={"quantity": 1, "buyer_phone": "+1-555-9090"},
+            json={"quantity": 1, "buyer_phone": "+91-98765-43210"},
             headers=buyer_headers
         )
         assert reserve_res.status_code == 200
@@ -82,8 +86,7 @@ def test_websocket_realtime_e2e_broadcast():
         assert reservation["status"] == "confirmed"
         # Exact residential address is now unlocked for Buyer Charlie!
         assert reservation["listing"]["is_exact_location"] is True
-        assert "Flat 2A, 10 Hudson Yard" in reservation["listing"]["pickup_address"]
-        assert "Gate buzzer 2A" in reservation["listing"]["pickup_instructions"]
+        assert "Flat 2A, 10 Indiranagar Main Road" in reservation["listing"]["pickup_address"]
 
         # Buyer Charlie receives real-time listing_reserved event!
         ws_event_3 = ws.receive_json()

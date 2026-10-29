@@ -12,3 +12,4 @@ if __name__ == "__main__":
     print(f"👉 Live WebSocket Feed:     ws://localhost:{port}/ws/live-feed")
     print("=" * 70)
     uvicorn.run("backend.main:app", host=host, port=port, reload=False)
+

@@ -78,6 +78,11 @@ export const api = {
       currency?: string;
       food_image?: string;
       status: ListingStatus;
+      house_label?: string;
+      portion_size?: string;
+      items_included?: string;
+      spice_level?: string;
+      meal_time?: string;
       latitude: number;
       longitude: number;
       pickup_address: string;
@@ -175,3 +180,4 @@ export const api = {
     return res.json();
   }
 };
+

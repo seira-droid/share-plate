@@ -200,12 +200,12 @@ export const BuyerMap: React.FC<BuyerMapProps> = ({
       const imgHtml = listing.food_image
         ? `<div class="w-full h-28 overflow-hidden rounded-t-lg bg-slate-100 mb-2 relative">
              <img src="${listing.food_image}" alt="${listing.food_name}" class="w-full h-full object-cover"/>
-             <div class="absolute top-2 right-2 bg-slate-900/80 text-white font-bold text-xs px-2 py-0.5 rounded-full backdrop-blur-sm">
-               $${listing.price.toFixed(2)}
+             <div class="absolute top-2 right-2 bg-slate-900/85 text-white font-bold text-xs px-2.5 py-0.5 rounded-full backdrop-blur-sm">
+               ₹${listing.price.toFixed(0)}
              </div>
            </div>`
         : `<div class="flex justify-between items-center mb-2">
-             <span class="font-bold text-emerald-600 text-base">$${listing.price.toFixed(2)}</span>
+             <span class="font-bold text-emerald-600 text-base">₹${listing.price.toFixed(0)}</span>
            </div>`;
 
       const popupContent = document.createElement('div');
@@ -220,9 +220,13 @@ export const BuyerMap: React.FC<BuyerMapProps> = ({
             </span>
           </div>
           <h4 class="font-bold text-slate-900 text-sm leading-snug line-clamp-1">${listing.food_name}</h4>
-          <p class="text-xs text-slate-600 flex items-center gap-1">
-            <span>🧑‍🍳 ${listing.seller_name}</span>
+          <p class="text-xs text-orange-700 font-medium flex items-center gap-1">
+            <span>🏠 ${listing.house_label || listing.seller_name}</span>
           </p>
+          <div class="text-[11px] text-slate-600 bg-slate-50 p-1.5 rounded-lg border border-slate-100 flex items-center justify-between">
+            <span>📦 <strong>Portion:</strong> ${listing.portion_size || '1 Full Plate'}</span>
+            <span>🌶️ ${listing.spice_level || 'Medium'}</span>
+          </div>
           <div class="text-[11px] text-slate-500 flex items-center gap-1">
             <span class="inline-block w-2 h-2 rounded-full ${listing.is_exact_location ? 'bg-emerald-500' : 'bg-amber-400'}"></span>
             <span>${listing.is_exact_location ? 'Exact Pickup Address' : 'Approximate Area (Privacy Safe)'}</span>
@@ -235,7 +239,7 @@ export const BuyerMap: React.FC<BuyerMapProps> = ({
             ${
               listing.status === 'ready' && !listing.reserved_by_current_user && !isSellerMode
                 ? `<button id="reserve-btn-${listing.id}" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-1.5 px-2 rounded-md font-semibold shadow-sm transition-colors">
-                     Reserve ($${listing.price.toFixed(2)})
+                     Reserve (₹${listing.price.toFixed(0)})
                    </button>`
                 : ''
             }
@@ -324,3 +328,4 @@ export const BuyerMap: React.FC<BuyerMapProps> = ({
     </div>
   );
 };
+

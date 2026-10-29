@@ -102,11 +102,11 @@ export const Navbar: React.FC<NavbarProps> = ({
             <button
               onClick={onSeedData}
               disabled={isSeeding}
-              title="Populate test homemade dishes around current coordinates"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 transition-colors"
+              title="Populate authentic homemade Indian dishes around current coordinates"
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200 transition-colors"
             >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{isSeeding ? 'Seeding...' : 'Seed Data'}</span>
+              <Sparkles className="w-3.5 h-3.5 text-orange-600" />
+              <span>{isSeeding ? 'Seeding...' : 'Seed Indian Menu'}</span>
             </button>
 
             {/* User Switcher Dropdown */}
@@ -143,3 +143,4 @@ export const Navbar: React.FC<NavbarProps> = ({
     </header>
   );
 };
+

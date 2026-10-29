@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { GPSLocation } from '../types';
+import type { GPSLocation } from '../types';
 
 export const PRESET_LOCATIONS = [
-  { name: 'Downtown Metro Center', lat: 40.7128, lng: -74.0060 },
-  { name: 'Green Valley Suburb', lat: 40.7282, lng: -73.9942 },
-  { name: 'West Riverside District', lat: 40.7061, lng: -74.0150 },
-  { name: 'University Commons', lat: 40.7295, lng: -73.9965 },
+  { name: 'Bengaluru - Indiranagar 1st Stage', lat: 12.9784, lng: 77.6408 },
+  { name: 'Bengaluru - Koramangala 4th Block', lat: 12.9352, lng: 77.6245 },
+  { name: 'Kochi - Panampilly Nagar', lat: 9.9625, lng: 76.2990 },
+  { name: 'Kochi - Kakkanad InfoPark Area', lat: 10.0159, lng: 76.3419 },
+  { name: 'Mumbai - Bandra West (Pali Hill)', lat: 19.0596, lng: 72.8295 },
+  { name: 'Delhi - Connaught Place', lat: 28.6304, lng: 77.2177 }
 ];
 
 export function useGeolocation() {

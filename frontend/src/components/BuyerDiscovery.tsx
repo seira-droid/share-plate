@@ -23,11 +23,13 @@ interface BuyerDiscoveryProps {
 
 const CATEGORIES = [
   'All',
-  'Home Meals',
-  'Bakery & Breads',
-  'Curries & Rice',
-  'Desserts & Snacks',
-  'Healthy & Salads'
+  'Kerala Homestyle',
+  'Biryani & Rice',
+  'Traditional Thali',
+  'North Indian Curries',
+  'South Indian Tiffin',
+  'Evening Snacks & Chaat',
+  'Sweets & Desserts'
 ];
 
 const RADIUS_OPTIONS = [1, 3, 5, 10];
@@ -61,7 +63,7 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search homemade dishes, chefs, or ingredients..."
+              placeholder="Search Biryani, Kerala Porotta, Thali, Paneer, Dosa, Samosas..."
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-slate-50/50"
@@ -215,8 +217,8 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-2xl">🍲</div>
                     )}
-                    <div className="absolute bottom-1 right-1 bg-slate-900/80 text-white font-bold text-[11px] px-1.5 py-0.5 rounded-md">
-                      ${item.price.toFixed(2)}
+                    <div className="absolute bottom-1 right-1 bg-slate-900/85 text-white font-bold text-[11px] px-1.5 py-0.5 rounded-md">
+                      ₹{item.price.toFixed(0)}
                     </div>
                   </div>
 
@@ -231,7 +233,7 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
                               : 'bg-amber-100 text-amber-800 border-amber-200'
                           }`}
                         >
-                          {isReady ? 'Ready for Pickup' : 'Preparing'}
+                          {isReady ? 'Ready for Pickup' : 'Cooking'}
                         </span>
                         
                         <span className="text-xs font-bold text-blue-600 flex items-center gap-0.5">
@@ -244,15 +246,18 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
                         {item.food_name}
                       </h4>
 
-                      <p className="text-xs text-slate-500 flex items-center gap-1 line-clamp-1">
-                        <span>🧑‍🍳 {item.seller_name}</span>
-                        <span>•</span>
-                        <span>{item.location_name}</span>
+                      <p className="text-xs text-orange-700 font-medium flex items-center gap-1 line-clamp-1">
+                        <span>🏠 {item.house_label || item.seller_name}</span>
                       </p>
+
+                      <div className="text-[11px] text-slate-500 line-clamp-1">
+                        <span>📦 {item.portion_size || '1 portion'}</span>
+                        {item.items_included && <span> • {item.items_included}</span>}
+                      </div>
                     </div>
 
-                    <div className="pt-2 flex items-center justify-between text-xs">
-                      <span className="text-[11px] text-slate-500">
+                    <div className="pt-1.5 flex items-center justify-between text-xs">
+                      <span className="text-[11px] text-slate-500 font-medium">
                         {item.quantity_available} left
                         {item.time_since_ready && ` • ${item.time_since_ready}`}
                       </span>
@@ -265,7 +270,7 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
                           }}
                           className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-colors active:scale-95"
                         >
-                          Reserve
+                          Reserve (₹{item.price.toFixed(0)})
                         </button>
                       )}
                     </div>
@@ -279,3 +284,4 @@ export const BuyerDiscovery: React.FC<BuyerDiscoveryProps> = ({
     </div>
   );
 };
+

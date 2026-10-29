@@ -141,3 +141,4 @@ export function useRealtimeFeed({
 
   return { isConnected, lastNotification };
 }
+

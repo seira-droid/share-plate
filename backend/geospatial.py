@@ -75,3 +75,4 @@ def format_distance(distance_km: float) -> str:
     if distance_km < 1.0:
         return f"{int(distance_km * 1000)} m"
     return f"{distance_km:.1f} km"
+

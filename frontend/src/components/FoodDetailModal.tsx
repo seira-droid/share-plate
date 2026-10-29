@@ -91,8 +91,8 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
               </h2>
             </div>
             <div className="text-right">
-              <span className="text-2xl font-black text-emerald-400 drop-shadow-sm">
-                ${listing.price.toFixed(2)}
+              <span className="text-2xl font-black text-amber-400 drop-shadow-sm">
+                ₹{listing.price.toFixed(0)}
               </span>
               <span className="block text-[11px] text-white/80">per portion</span>
             </div>
@@ -141,16 +141,16 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
             )}
           </div>
 
-          {/* Seller Profile */}
+          {/* Seller & House Profile */}
           <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+              <div className="w-10 h-10 rounded-full bg-orange-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
                 {listing.seller_name.charAt(0)}
               </div>
               <div>
                 <h4 className="font-bold text-slate-900 text-sm">{listing.seller_name}</h4>
-                <p className="text-xs text-slate-500 flex items-center gap-1">
-                  <ChefHat className="w-3.5 h-3.5 text-slate-400" /> Local Household Chef
+                <p className="text-xs text-orange-700 font-semibold flex items-center gap-1">
+                  <span>🏠 {listing.house_label || 'Local Home Kitchen'}</span>
                 </p>
               </div>
             </div>
@@ -159,6 +159,29 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
                 {listing.quantity_available} {listing.quantity_available === 1 ? 'portion' : 'portions'} left
               </span>
             </div>
+          </div>
+
+          {/* Portion & Meal Specifications Box */}
+          <div className="p-4 bg-orange-50/50 rounded-2xl border border-orange-100 space-y-2">
+            <h5 className="text-xs font-bold text-orange-950 uppercase tracking-wider flex items-center gap-1">
+              <span>📦 Portion Details & Items Included</span>
+            </h5>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="p-2 bg-white rounded-xl border border-orange-100">
+                <span className="text-slate-500 block text-[10px] font-semibold">Serving Size</span>
+                <span className="font-bold text-slate-800">{listing.portion_size || '1 Full Meal Plate'}</span>
+              </div>
+              <div className="p-2 bg-white rounded-xl border border-orange-100">
+                <span className="text-slate-500 block text-[10px] font-semibold">Spice & Timing</span>
+                <span className="font-bold text-slate-800">🌶️ {listing.spice_level || 'Medium'} • {listing.meal_time || 'Lunch'}</span>
+              </div>
+            </div>
+            {listing.items_included && (
+              <div className="text-xs text-slate-700 pt-1">
+                <strong className="text-slate-900">What's in 1 Portion: </strong>
+                <span>{listing.items_included}</span>
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -282,7 +305,7 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
                       <>
                         <span>Reserve Food</span>
                         <span>•</span>
-                        <span>${(listing.price * quantity).toFixed(2)}</span>
+                        <span>₹{(listing.price * quantity).toFixed(0)}</span>
                       </>
                     )}
                   </button>
@@ -299,3 +322,4 @@ export const FoodDetailModal: React.FC<FoodDetailModalProps> = ({
     </div>
   );
 };
+

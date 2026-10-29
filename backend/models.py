@@ -42,8 +42,15 @@ class FoodListing(Base):
     category = Column(String, default="Home Meals", index=True)
     quantity_available = Column(Integer, default=1)
     price = Column(Float, nullable=False, default=0.0)
-    currency = Column(String, default="$")
+    currency = Column(String, default="₹")
     food_image = Column(String, nullable=True)
+
+    # House & Portion customization
+    house_label = Column(String, nullable=True)  # e.g. "House #14B (Amma's Kitchen)"
+    portion_size = Column(String, default="1 Full Portion")  # e.g. "1 Thali", "2 Parottas + Curry"
+    items_included = Column(Text, nullable=True)  # e.g. "Rice, Sambar, Aviyal, Thoran, Papad, Pickle"
+    spice_level = Column(String, default="Medium")  # Mild, Medium, Spicy
+    meal_time = Column(String, default="Lunch")  # Breakfast, Lunch, Snacks, Dinner
     
     # Status lifecycle: preparing -> ready -> reserved -> sold_out
     status = Column(String, default=ListingStatus.PREPARING.value, index=True)
@@ -83,3 +90,4 @@ class Reservation(Base):
 
     listing = relationship("FoodListing", back_populates="reservations")
     buyer = relationship("User", back_populates="reservations")
+

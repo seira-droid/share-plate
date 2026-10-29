@@ -22,6 +22,13 @@ export interface Listing {
   food_image?: string;
   status: ListingStatus;
   
+  // Household & Portion Customization
+  house_label?: string;
+  portion_size?: string;
+  items_included?: string;
+  spice_level?: string;
+  meal_time?: string;
+
   // Coordinates
   latitude: number;
   longitude: number;

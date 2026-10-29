@@ -298,7 +298,7 @@ export function App() {
           />
         ) : (
           <SellerDashboard
-            currentUserId={currentUser?.id || 'seller-alice'}
+            currentUserId={currentUser?.id || 'seller-priya'}
             sellerGPS={buyerLocation}
             onRefreshListings={fetchNearbyListings}
             onRequestGPS={requestRealGPS}
