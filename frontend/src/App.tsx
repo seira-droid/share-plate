@@ -1,23 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Listing, ListingStatus } from './types';
+import { User, Listing, ListingStatus, UserRole } from './types';
 import { api } from './services/api';
 import { useGeolocation, PRESET_LOCATIONS } from './hooks/useGeolocation';
 import { useRealtimeFeed } from './hooks/useRealtimeFeed';
 import { Navbar } from './components/Navbar';
-import { BuyerDiscovery } from './components/BuyerDiscovery';
+import { BuyerDashboard } from './components/BuyerDashboard';
 import { SellerDashboard } from './components/SellerDashboard';
+import { AdminDashboard } from './components/AdminDashboard';
 import { FoodDetailModal } from './components/FoodDetailModal';
-import { Bell, Sparkles, CheckCircle2, ShieldCheck, Info } from 'lucide-react';
+import { AuthModal } from './components/AuthModal';
+import { Sparkles, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export function App() {
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'buyer' | 'seller'>('buyer');
+  const [activeRoleView, setActiveRoleView] = useState<UserRole>('BUYER');
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
   // Geolocation
   const { location: buyerLocation, requestRealGPS, setManualLocation } = useGeolocation();
 
-  // Buyer Discovery Filters
+  // Filters & State
   const [radiusKm, setRadiusKm] = useState<number>(5.0);
   const [categoryFilter, setCategoryFilter] = useState<string>('All');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -32,34 +35,38 @@ export function App() {
   // Live Toast Notification
   const [toast, setToast] = useState<{ id: string; message: string; type: 'ready' | 'info' | 'reserve' } | null>(null);
 
-  // Load Users on Startup
+  // Load Session and Users on Startup
   useEffect(() => {
-    async function loadInitialUsers() {
+    async function loadInitialSession() {
       try {
         const uList = await api.getUsers();
         setUsers(uList);
+
+        // Check if there is an existing session
+        try {
+          const me = await api.getMe();
+          setCurrentUser(me);
+          setActiveRoleView(me.role);
+          return;
+        } catch {
+          // No active JWT, check localStorage fallback or pick default
+        }
+
         if (uList.length > 0) {
-          // Default to Buyer Charlie or saved preference
           const savedId = localStorage.getItem('foodshare_user_id');
-          const defaultUser = uList.find((u) => u.id === savedId) || uList.find((u) => u.role === 'buyer') || uList[0];
+          const defaultUser =
+            uList.find((u) => u.id === savedId) ||
+            uList.find((u) => u.role === 'BUYER') ||
+            uList[0];
           setCurrentUser(defaultUser);
+          setActiveRoleView(defaultUser.role);
         }
       } catch (e) {
-        console.error('Failed to load users:', e);
+        console.error('Failed to load initial session:', e);
       }
     }
-    loadInitialUsers();
+    loadInitialSession();
   }, []);
-
-  // Sync active user ID to localStorage
-  const handleSelectUser = (user: User) => {
-    setCurrentUser(user);
-    localStorage.setItem('foodshare_user_id', user.id);
-    // Auto switch tab if changing to a dedicated seller
-    if (user.role === 'seller') {
-      setActiveTab('seller');
-    }
-  };
 
   // Fetch Nearby Listings
   const fetchNearbyListings = useCallback(async () => {
@@ -71,8 +78,7 @@ export function App() {
         radiusKm,
         categoryFilter,
         statusFilter,
-        searchQuery,
-        currentUser?.id
+        searchQuery
       );
       setListings(data);
     } catch (e) {
@@ -80,7 +86,7 @@ export function App() {
     } finally {
       setIsLoadingListings(false);
     }
-  }, [buyerLocation.lat, buyerLocation.lng, radiusKm, categoryFilter, statusFilter, searchQuery, currentUser?.id]);
+  }, [buyerLocation.lat, buyerLocation.lng, radiusKm, categoryFilter, statusFilter, searchQuery]);
 
   useEffect(() => {
     fetchNearbyListings();
@@ -88,10 +94,9 @@ export function App() {
 
   // Handle Real-Time WebSocket Events
   const handleRealtimeEvent = useCallback((event: string, item: Listing) => {
-    console.log(`[Realtime Event] ${event}:`, item.food_name);
+    console.log(`[Realtime Event] ${event}:`, item?.food_name);
 
     if (event === 'listing_created' || event === 'listing_status_changed' || event === 'listing_reserved' || event === 'listing_cancelled') {
-      // Show notification toast
       if (item.status === 'ready') {
         setToast({
           id: Math.random().toString(),
@@ -112,34 +117,34 @@ export function App() {
         });
       }
 
-      // Update listings state in-place without manual refresh
       setListings((prevListings) => {
         const existingIndex = prevListings.findIndex((l) => l.id === item.id);
-
-        // If status changed to sold_out and we are filtering for active listings, remove or update
         if (item.status === 'sold_out' && statusFilter === 'ready') {
           return prevListings.filter((l) => l.id !== item.id);
         }
 
         if (existingIndex >= 0) {
           const updated = [...prevListings];
-          updated[existingIndex] = {
-            ...updated[existingIndex],
-            ...item
-          };
+          updated[existingIndex] = { ...updated[existingIndex], ...item };
           return updated;
         } else {
-          // New listing in radius
           return [item, ...prevListings];
         }
       });
 
-      // Update selected listing in modal if open
       setSelectedListing((current) => {
         if (current && current.id === item.id) {
           return { ...current, ...item };
         }
         return current;
+      });
+    } else if (event === 'listing_deleted') {
+      // Remove deleted listing from map immediately
+      setListings((prev) => prev.filter((l) => l.id !== (item as any)?.id));
+      setToast({
+        id: Math.random().toString(),
+        message: `Listing removed by administrator`,
+        type: 'info'
       });
     }
   }, [statusFilter]);
@@ -153,7 +158,7 @@ export function App() {
     onListingEvent: handleRealtimeEvent
   });
 
-  // Auto-dismiss toast after 6 seconds
+  // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(null), 6000);
@@ -161,10 +166,49 @@ export function App() {
     }
   }, [toast]);
 
+  // Auth Success Handler
+  const handleAuthSuccess = (user: User) => {
+    setCurrentUser(user);
+    setActiveRoleView(user.role);
+    setToast({
+      id: Math.random().toString(),
+      message: `Signed in as ${user.full_name} (${user.role})`,
+      type: 'info'
+    });
+    fetchNearbyListings();
+  };
+
+  // Sign Out Handler
+  const handleLogout = () => {
+    api.logout();
+    setCurrentUser(null);
+    setActiveRoleView('BUYER');
+    setIsAuthModalOpen(true);
+    setToast({
+      id: Math.random().toString(),
+      message: 'Logged out successfully',
+      type: 'info'
+    });
+  };
+
+  // Role View Switching with Security Guard
+  const handleRoleViewChange = (role: UserRole) => {
+    if (role === 'ADMIN' && currentUser?.role !== 'ADMIN') {
+      alert('Unauthorized: Admin command center requires administrator privileges (admin@foodnearby.in).');
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setActiveRoleView(role);
+  };
+
   // Handle Quick Reservation
   const handleQuickReserve = async (listing: Listing) => {
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
     try {
-      const res = await api.reserveListing(listing.id, 1, currentUser?.phone, currentUser?.id);
+      const res = await api.reserveListing(listing.id, 1, currentUser?.phone);
       setSelectedListing(res.listing);
       await fetchNearbyListings();
       setToast({
@@ -177,9 +221,13 @@ export function App() {
     }
   };
 
-  // Handle Detailed Reservation
+  // Handle Detailed Reservation Modal
   const handleModalReserve = async (listingId: string, quantity: number, phone?: string) => {
-    const res = await api.reserveListing(listingId, quantity, phone, currentUser?.id);
+    if (!currentUser) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const res = await api.reserveListing(listingId, quantity, phone);
     setSelectedListing(res.listing);
     await fetchNearbyListings();
     setToast({
@@ -191,7 +239,7 @@ export function App() {
 
   // Handle Reservation Cancellation
   const handleCancelReservation = async (listingId: string, reservationId?: string) => {
-    const updated = await api.cancelReservation(listingId, reservationId, currentUser?.id);
+    const updated = await api.cancelReservation(listingId, reservationId);
     setSelectedListing(updated);
     await fetchNearbyListings();
     setToast({
@@ -201,7 +249,7 @@ export function App() {
     });
   };
 
-  // Seed sample listings
+  // Seed authentic dishes
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
@@ -209,7 +257,7 @@ export function App() {
       await fetchNearbyListings();
       setToast({
         id: Math.random().toString(),
-        message: `✨ Fresh homemade dishes seeded around your GPS coordinates!`,
+        message: `✨ Fresh Kerala dishes seeded around your GPS coordinates!`,
         type: 'info'
       });
     } catch (e: any) {
@@ -219,12 +267,12 @@ export function App() {
     }
   };
 
-  // Open Listing Details Modal with fresh database state
+  // Open Details Modal
   const handleOpenDetail = async (listing: Listing) => {
     try {
-      const detail = await api.getListingDetail(listing.id, buyerLocation.lat, buyerLocation.lng, currentUser?.id);
+      const detail = await api.getListingDetail(listing.id, buyerLocation.lat, buyerLocation.lng);
       setSelectedListing(detail);
-    } catch (e) {
+    } catch {
       setSelectedListing(listing);
     }
   };
@@ -235,14 +283,20 @@ export function App() {
       <Navbar
         users={users}
         currentUser={currentUser}
-        onSelectUser={handleSelectUser}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        onSelectUser={(u) => {
+          setCurrentUser(u);
+          setActiveRoleView(u.role);
+          localStorage.setItem('foodshare_user_id', u.id);
+        }}
+        activeRoleView={activeRoleView}
+        onRoleViewChange={handleRoleViewChange}
         isWsConnected={isWsConnected}
         buyerLocation={buyerLocation}
         onSelectPresetLocation={(loc) => setManualLocation(loc.lat, loc.lng, loc.name)}
         onSeedData={handleSeedData}
         isSeeding={isSeeding}
+        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Floating Real-Time Live Notification Toast */}
@@ -262,7 +316,7 @@ export function App() {
             </span>
             <div className="flex-1 text-xs">
               <div className="font-bold text-white/90 uppercase tracking-wider text-[10px]">
-                Real-Time Map Update
+                Real-Time 3D Map Update
               </div>
               <div className="font-semibold mt-0.5 leading-snug">{toast.message}</div>
             </div>
@@ -276,10 +330,11 @@ export function App() {
         </div>
       )}
 
-      {/* Main Workspace */}
+      {/* Main Workspace with Strict Role View Routing */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        {activeTab === 'buyer' ? (
-          <BuyerDiscovery
+        {activeRoleView === 'BUYER' && (
+          <BuyerDashboard
+            currentUser={currentUser}
             buyerLocation={buyerLocation}
             listings={listings}
             radiusKm={radiusKm}
@@ -294,17 +349,36 @@ export function App() {
             onSelectListing={handleOpenDetail}
             onQuickReserve={handleQuickReserve}
             onMapClickLocation={(lat, lng) => setManualLocation(lat, lng, 'Pinned Map Location')}
+            onRequestGPS={requestRealGPS}
             isLoading={isLoadingListings}
           />
-        ) : (
+        )}
+
+        {activeRoleView === 'SELLER' && (
           <SellerDashboard
-            currentUserId={currentUser?.id || 'seller-priya'}
+            currentUserId={currentUser?.id || 'seller-lakshmi'}
             sellerGPS={buyerLocation}
             onRefreshListings={fetchNearbyListings}
             onRequestGPS={requestRealGPS}
           />
         )}
+
+        {activeRoleView === 'ADMIN' && (
+          <AdminDashboard
+            currentUser={currentUser}
+            onRefreshData={fetchNearbyListings}
+          />
+        )}
       </main>
+
+      {/* Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onAuthSuccess={handleAuthSuccess}
+        initialRole={activeRoleView}
+        currentGPS={buyerLocation}
+      />
 
       {/* Food Detail Modal / Bottom Sheet */}
       {selectedListing && (
@@ -322,12 +396,14 @@ export function App() {
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Hyperlocal Food Sharing & Live GPS Availability Engine</span>
+            <span>FoodNearby Hyperlocal Platform • Kerala Homestyle Food Sharing</span>
           </div>
           <div className="flex items-center gap-4 text-slate-400">
             <span>Residential Privacy Obfuscation Active</span>
             <span>•</span>
-            <span>WebSocket Live Synchronization</span>
+            <span>MapLibre 3D WebGL Vector Engine</span>
+            <span>•</span>
+            <span>Strict Role-Based Access Control</span>
           </div>
         </div>
       </footer>

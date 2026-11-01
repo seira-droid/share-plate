@@ -1,12 +1,26 @@
+export type UserRole = 'BUYER' | 'SELLER' | 'ADMIN';
+
 export type ListingStatus = 'preparing' | 'ready' | 'reserved' | 'sold_out';
 
 export interface User {
   id: string;
-  name: string;
+  full_name: string;
   email: string;
-  role: 'seller' | 'buyer' | 'both';
   phone?: string;
+  role: UserRole;
+  account_status: 'active' | 'suspended' | 'pending_approval';
   avatar_url?: string;
+  kitchen_name?: string;
+  pickup_location?: string;
+  latitude?: number;
+  longitude?: number;
+  created_at?: string;
+}
+
+export interface AuthResponse {
+  access_token: string;
+  token_type: string;
+  user: User;
 }
 
 export interface Listing {
@@ -16,11 +30,14 @@ export interface Listing {
   food_name: string;
   description?: string;
   category: string;
+  quantity: number;
   quantity_available: number;
   price: number;
   currency: string;
+  image_url?: string;
   food_image?: string;
   status: ListingStatus;
+  availability_status?: string;
   
   // Household & Portion Customization
   house_label?: string;
@@ -51,12 +68,18 @@ export interface Listing {
 
 export interface Reservation {
   id: string;
-  listing_id: string;
+  food_listing_id?: string;
+  listing_id?: string;
+  food_name?: string;
+  seller_name?: string;
   buyer_id: string;
   buyer_name: string;
   buyer_phone?: string;
+  quantity: number;
+  reserved_quantity?: number;
+  total_price?: number;
   status: 'confirmed' | 'cancelled' | 'completed';
-  reserved_quantity: number;
+  reservation_status?: string;
   created_at: string;
   listing?: Listing;
 }
@@ -69,8 +92,30 @@ export interface GPSLocation {
   addressName?: string;
 }
 
+export interface AdminOverviewStats {
+  total_users: number;
+  active_buyers: number;
+  active_sellers: number;
+  available_listings: number;
+  ready_for_pickup: number;
+  active_reservations: number;
+  completed_transactions: number;
+  reported_listings_count: number;
+  total_gmv_rupees: number;
+}
+
+export interface ReportItem {
+  id: string;
+  reporter_id: string;
+  reported_listing_id?: string;
+  reported_user_id?: string;
+  reason: string;
+  status: string;
+  created_at: string;
+}
+
 export interface WebSocketEventPayload {
-  event: 'listing_created' | 'listing_status_changed' | 'listing_reserved' | 'listing_cancelled' | 'connected' | 'filter_updated';
-  data?: Listing;
+  event: 'listing_created' | 'listing_status_changed' | 'listing_reserved' | 'listing_cancelled' | 'listing_deleted' | 'connected' | 'filter_updated';
+  data?: any;
   message?: string;
 }

@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from .database import engine, Base, SessionLocal, get_db
 from .models import User, FoodListing
-from .routes.auth import router as auth_router, init_demo_users
+from .routes.auth import router as auth_router, init_demo_identities
 from .routes.food import router as food_router
+from .routes.admin import router as admin_router
 from .websocket_manager import ws_manager
 from .seed_data import seed_sample_listings
 
@@ -23,13 +24,13 @@ async def lifespan(app: FastAPI):
     
     db = SessionLocal()
     try:
-        init_demo_users(db)
+        init_demo_identities(db)
         
-        # If database is empty, seed initial sample Indian dishes around Bengaluru coordinates (12.9716, 77.5946)
+        # If database is empty, seed initial sample Kerala homemade food around Panampilly Nagar Kochi (9.9625, 76.2990)
         existing_count = db.query(FoodListing).count()
         if existing_count == 0:
-            logger.info("Seeding initial Indian homemade dishes around coordinates (12.9716, 77.5946)...")
-            seed_sample_listings(db, center_lat=12.9716, center_lon=77.5946)
+            logger.info("Seeding initial Kerala sample homemade dishes around coordinates (9.9625, 76.2990)...")
+            seed_sample_listings(db, center_lat=9.9625, center_lon=76.2990)
     finally:
         db.close()
         
@@ -38,8 +39,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Hyperlocal Food Availability & Live GPS Tracking API",
-    description="Real-time peer-to-peer household food sharing marketplace with GPS-based live tracking, proximity filtering, and residential privacy obfuscation.",
-    version="1.0.0",
+    description="Real-time peer-to-peer household food sharing marketplace with RBAC (Buyer, Seller, Admin), live 3D GPS tracking, proximity filtering, and residential privacy obfuscation.",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -55,12 +56,14 @@ app.add_middleware(
 # Mount REST API routers
 app.include_router(auth_router)
 app.include_router(food_router)
+app.include_router(admin_router)
 
 @app.get("/api/info")
 def root_info():
     return {
         "status": "online",
         "service": "Hyperlocal Food Availability & Tracking API",
+        "version": "2.0.0",
         "docs": "/docs",
         "ws_endpoint": "/ws/live-feed"
     }
@@ -120,4 +123,3 @@ from fastapi.staticfiles import StaticFiles
 frontend_dist = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "frontend", "dist"))
 if os.path.exists(frontend_dist):
     app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="static-frontend")
-
