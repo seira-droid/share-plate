@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { User, AdminOverviewStats, ReportItem } from '../types';
 import { api } from '../services/api';
 import {
@@ -16,7 +16,8 @@ import {
   RefreshCw,
   Search,
   SlidersHorizontal,
-  DollarSign
+  DollarSign,
+  ArrowRight
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -25,7 +26,7 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onRefreshData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'buyers' | 'listings' | 'reservations' | 'reports'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'sellers' | 'listings' | 'reservations' | 'reports'>('overview');
   const [stats, setStats] = useState<AdminOverviewStats | null>(null);
   const [usersList, setUsersList] = useState<User[]>([]);
   const [listingsList, setListingsList] = useState<any[]>([]);
@@ -38,14 +39,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
   // Access check
   if (!currentUser || currentUser.role !== 'ADMIN') {
     return (
-      <div className="p-12 text-center bg-white rounded-3xl border border-rose-200 space-y-3">
-        <div className="w-16 h-16 rounded-full bg-rose-50 text-rose-600 mx-auto flex items-center justify-center text-3xl">
-          🚫
+      <div className="p-12 text-center bg-white rounded-3xl border border-rose-200 space-y-4 max-w-lg mx-auto my-12 shadow-xl">
+        <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center text-3xl">
+          🛡️
         </div>
-        <h3 className="font-extrabold text-xl text-rose-900">Access Restricted</h3>
-        <p className="text-slate-500 text-sm max-w-md mx-auto">
-          Administrative dashboard is restricted to authorized platform administrators only (HTTP 403 Forbidden).
+        <h3 className="font-extrabold text-xl text-rose-950">Administrative Access Required</h3>
+        <p className="text-slate-500 text-xs leading-relaxed">
+          The Admin Control Center is restricted to authorized platform administrators only (HTTP 403 Forbidden). Please sign in using an administrator account.
         </p>
+        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          Demo Admin: <code className="font-mono text-emerald-800">admin@foodnearby.in</code>
+        </div>
       </div>
     );
   }
@@ -76,10 +80,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
     loadAdminData();
   }, []);
 
-  const handleVerifySeller = async (sellerId: string, status: 'verified' | 'rejected') => {
+  const handleVerifySeller = async (sellerId: string, status: 'approved' | 'suspended') => {
     setActionInProgressId(sellerId);
     try {
-      await api.verifySeller(sellerId, status, status === 'verified' ? 'active' : 'suspended');
+      await api.verifySeller(sellerId, status, status === 'approved' ? 'active' : 'suspended');
       await loadAdminData();
       if (onRefreshData) onRefreshData();
     } catch (e: any) {
@@ -90,7 +94,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
   };
 
   const handleDeleteListing = async (listingId: string) => {
-    if (!window.confirm('Are you sure you want to delete this listing from the live map?')) {
+    if (!window.confirm('Are you sure you want to remove this listing from the live map?')) {
       return;
     }
     setActionInProgressId(listingId);
@@ -99,492 +103,221 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
       await loadAdminData();
       if (onRefreshData) onRefreshData();
     } catch (e: any) {
-      alert(e.message || 'Failed to remove listing');
+      alert(e.message || 'Failed to delete listing');
     } finally {
       setActionInProgressId(null);
     }
   };
 
+  // Filtered Sellers
+  const sellers = useMemo(() => {
+    return usersList.filter(
+      (u) =>
+        u.role === 'SELLER' &&
+        (u.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          u.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (u.kitchen_name && u.kitchen_name.toLowerCase().includes(searchTerm.toLowerCase())))
+    );
+  }, [usersList, searchTerm]);
+
+  // Filtered Listings
+  const filteredListings = useMemo(() => {
+    return listingsList.filter(
+      (l) =>
+        l.food_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        l.seller_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        l.category.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [listingsList, searchTerm]);
+
   return (
-    <div className="space-y-6">
-      {/* Admin Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 bg-gradient-to-r from-slate-900 via-rose-950 to-slate-900 text-white rounded-3xl shadow-xl border border-rose-900/30">
+    <div className="space-y-6 pb-12 text-left">
+      {/* Admin Header */}
+      <div className="bg-gradient-to-r from-rose-900 via-slate-900 to-slate-950 rounded-3xl p-6 sm:p-8 text-white shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <span className="p-1.5 bg-rose-600 rounded-xl text-white">
-              <Shield className="w-5 h-5" />
+            <Shield className="w-5 h-5 text-rose-400" />
+            <span className="text-xs font-bold text-rose-300 uppercase tracking-wider">
+              Platform Administration
             </span>
-            <h2 className="text-xl md:text-2xl font-black">Platform Administrator Command Center</h2>
           </div>
-          <p className="text-slate-300 text-xs md:text-sm max-w-2xl">
-            Live oversight of buyers, verified household sellers, active food listings on the 3D GPS map, and order transactions across Kerala.
+          <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+            Governance & Command Center
+          </h2>
+          <p className="text-slate-300 text-xs sm:text-sm">
+            Monitor real-time platform metrics, manage seller kitchen approvals, and enforce community food safety.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={loadAdminData}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl backdrop-blur-md transition-all active:scale-95"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Audit Feed</span>
-          </button>
-        </div>
+        <button
+          onClick={loadAdminData}
+          disabled={loading}
+          className="px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs flex items-center gap-2 self-start sm:self-auto cursor-pointer"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          <span>Refresh Metrics</span>
+        </button>
       </div>
 
-      {/* Admin KPI Overview Tiles */}
-      {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-              Registered Users
-            </span>
-            <div className="text-2xl font-black text-slate-900">{stats.total_users}</div>
-            <div className="text-[11px] text-slate-500 font-medium">
-              {stats.active_buyers} buyers • {stats.active_sellers} sellers
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-              Dishes Ready (Live)
-            </span>
-            <div className="text-2xl font-black text-emerald-600">{stats.ready_for_pickup}</div>
-            <div className="text-[11px] text-slate-500 font-medium">
-              Of {stats.available_listings} total active
-            </div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-              Active Reservations
-            </span>
-            <div className="text-2xl font-black text-blue-600">{stats.active_reservations}</div>
-            <div className="text-[11px] text-slate-500 font-medium">Locked for pickup</div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider block">
-              Completed Orders
-            </span>
-            <div className="text-2xl font-black text-purple-600">{stats.completed_transactions}</div>
-            <div className="text-[11px] text-slate-500 font-medium">Household meals shared</div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider block">
-              Gross Marketplace Val
-            </span>
-            <div className="text-2xl font-black text-amber-600">₹{stats.total_gmv_rupees.toFixed(0)}</div>
-            <div className="text-[11px] text-slate-500 font-medium">Community economy</div>
-          </div>
-
-          <div className="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-1">
-            <span className="text-[10px] font-bold text-rose-600 uppercase tracking-wider block">
-              Reported Items
-            </span>
-            <div className="text-2xl font-black text-rose-600">{stats.reported_listings_count}</div>
-            <div className="text-[11px] text-slate-500 font-medium">Moderation queue</div>
-          </div>
-        </div>
-      )}
-
-      {/* Admin Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-200 pb-2 overflow-x-auto">
+      {/* Tabs */}
+      <div className="flex items-center gap-2 border-b border-slate-200 pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'overview'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'overview' ? 'bg-rose-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          📊 Live Platform Monitor
+          Overview & Metrics
         </button>
 
         <button
           onClick={() => setActiveTab('sellers')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'sellers'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'sellers' ? 'bg-rose-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          🍳 Sellers & Kitchens ({usersList.filter((u) => u.role === 'SELLER').length})
-        </button>
-
-        <button
-          onClick={() => setActiveTab('buyers')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'buyers'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
-          }`}
-        >
-          👥 Registered Buyers ({usersList.filter((u) => u.role === 'BUYER').length})
+          Home Cooks ({sellers.length})
         </button>
 
         <button
           onClick={() => setActiveTab('listings')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'listings'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'listings' ? 'bg-rose-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          🍲 Food Listings Moderation ({listingsList.length})
+          Live Listings ({listingsList.length})
         </button>
 
         <button
           onClick={() => setActiveTab('reservations')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'reservations'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'reservations' ? 'bg-rose-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          📋 Reservations Audit ({reservationsList.length})
+          Reservations ({reservationsList.length})
         </button>
 
         <button
           onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-            activeTab === 'reports'
-              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
-              : 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            activeTab === 'reports' ? 'bg-rose-800 text-white shadow-xs' : 'text-slate-600 hover:bg-slate-100'
           }`}
         >
-          🚨 Reports & Safety ({reportsList.length})
+          <span>Reports Queue</span>
+          {reportsList.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px]">
+              {reportsList.length}
+            </span>
+          )}
         </button>
       </div>
 
-      {/* Tab: Overview / Live Monitor */}
+      {/* OVERVIEW TAB */}
       {activeTab === 'overview' && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Live Food Listings Feed */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
-                <span>Live Food Availability across Kerala</span>
-              </h3>
-              <span className="text-xs text-slate-400 font-semibold">{listingsList.length} items</span>
-            </div>
-
-            <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-              {listingsList.slice(0, 8).map((listing) => (
-                <div
-                  key={listing.id}
-                  className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 text-xs"
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={listing.image_url || listing.food_image || 'https://images.unsplash.com/photo-1546833999-b9f581a1996d'}
-                      alt={listing.food_name}
-                      className="w-11 h-11 rounded-xl object-cover border border-slate-200"
-                    />
-                    <div>
-                      <div className="font-bold text-slate-900">{listing.food_name}</div>
-                      <div className="text-slate-500 text-[11px]">
-                        Seller: {listing.seller_name || 'Home Cook'} • {listing.house_label || 'House Kitchen'}
-                      </div>
-                      <div className="text-[11px] font-semibold text-emerald-700">
-                        ₹{listing.price} • {listing.quantity_available} left ({listing.portion_size || '1 portion'})
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                    <span
-                      className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                        listing.availability_status === 'ready' || listing.status === 'ready'
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : listing.availability_status === 'preparing' || listing.status === 'preparing'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-slate-200 text-slate-700'
-                      }`}
-                    >
-                      {listing.availability_status || listing.status}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteListing(listing.id)}
-                      className="text-rose-600 hover:text-rose-800 text-[11px] font-semibold flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      <span>Remove</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Recent Household Reservations Audit */}
-          <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <ShoppingBag className="w-4 h-4 text-blue-600" />
-                <span>Recent Reservations & Transactions</span>
-              </h3>
-              <span className="text-xs text-slate-400 font-semibold">{reservationsList.length} orders</span>
-            </div>
-
-            <div className="space-y-2.5 max-h-[420px] overflow-y-auto pr-1">
-              {reservationsList.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">No reservations logged yet.</div>
-              ) : (
-                reservationsList.slice(0, 8).map((res) => (
-                  <div
-                    key={res.id}
-                    className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-bold text-slate-900">
-                        {res.listing?.food_name || 'Homemade Meal'} ({res.quantity}x)
-                      </div>
-                      <div className="text-slate-500 text-[11px]">
-                        Buyer: <strong className="text-slate-700">{res.buyer_name}</strong> • Phone: {res.buyer_phone || 'N/A'}
-                      </div>
-                      <div className="text-slate-400 text-[10px]">
-                        Created: {new Date(res.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </div>
-                    </div>
-
-                    <div className="text-right">
-                      <div className="font-black text-slate-900 text-sm">
-                        ₹{(res.total_price || (res.listing?.price ? res.listing.price * res.quantity : 0)).toFixed(0)}
-                      </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                        {res.status || res.reservation_status}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Sellers Management & Approvals */}
-      {activeTab === 'sellers' && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h3 className="font-bold text-slate-900 text-base">Household Kitchen Sellers</h3>
-              <p className="text-xs text-slate-500">
-                Verify home kitchens, inspect GPS coordinates, and manage account statuses.
-              </p>
-            </div>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-3">Seller Name</th>
-                  <th className="py-3 px-3">Kitchen / House</th>
-                  <th className="py-3 px-3">Contact</th>
-                  <th className="py-3 px-3">GPS Location</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3 text-right">Admin Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {usersList
-                  .filter((u) => u.role === 'SELLER')
-                  .map((seller) => (
-                    <tr key={seller.id} className="hover:bg-slate-50/60">
-                      <td className="py-3 px-3 font-bold text-slate-900">{seller.full_name}</td>
-                      <td className="py-3 px-3 text-slate-600">
-                        <div className="font-semibold text-orange-900">{seller.kitchen_name || 'Home Kitchen'}</div>
-                        <div className="text-[11px] text-slate-500">{seller.pickup_location || 'Residential address'}</div>
-                      </td>
-                      <td className="py-3 px-3 text-slate-600">
-                        <div>{seller.email}</div>
-                        <div className="text-[11px] text-slate-400">{seller.phone || 'N/A'}</div>
-                      </td>
-                      <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
-                        {seller.latitude?.toFixed(4)}, {seller.longitude?.toFixed(4)}
-                      </td>
-                      <td className="py-3 px-3">
-                        <span
-                          className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                            seller.account_status === 'active'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-rose-100 text-rose-800'
-                          }`}
-                        >
-                          {seller.account_status}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {seller.account_status !== 'active' ? (
-                            <button
-                              onClick={() => handleVerifySeller(seller.id, 'verified')}
-                              disabled={actionInProgressId === seller.id}
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-[11px]"
-                            >
-                              Approve / Activate
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => handleVerifySeller(seller.id, 'rejected')}
-                              disabled={actionInProgressId === seller.id}
-                              className="px-2.5 py-1 bg-slate-200 hover:bg-rose-100 hover:text-rose-700 text-slate-700 font-semibold rounded-lg text-[11px]"
-                            >
-                              Suspend
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Registered Buyers */}
-      {activeTab === 'buyers' && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Registered Neighborhood Buyers</h3>
-            <p className="text-xs text-slate-500">
-              Explore nearby buyers discovering homemade food in their vicinity.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {usersList
-              .filter((u) => u.role === 'BUYER')
-              .map((buyer) => (
-                <div key={buyer.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 text-sm">👤 {buyer.full_name}</span>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                      Buyer
-                    </span>
-                  </div>
-                  <div className="text-slate-600">
-                    <div>📧 {buyer.email}</div>
-                    <div>📞 {buyer.phone || '+91 98471 00000'}</div>
-                  </div>
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    📍 Lat: {buyer.latitude?.toFixed(4) || '9.9625'}, Lng: {buyer.longitude?.toFixed(4) || '76.2990'}
-                  </div>
-                </div>
-              ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tab: Food Listings Moderation */}
-      {activeTab === 'listings' && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">All Platform Food Listings</h3>
-            <p className="text-xs text-slate-500">
-              Inspect all homemade dishes. Inappropriate or expired listings can be immediately deleted from the live map.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {listingsList.map((listing) => (
-              <div
-                key={listing.id}
-                className="bg-slate-50 rounded-2xl p-4 border border-slate-200 flex flex-col justify-between text-xs space-y-3"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className="font-bold text-slate-900 text-sm">{listing.food_name}</h4>
-                    <span className="font-black text-sm text-slate-900">₹{listing.price}</span>
-                  </div>
-                  <p className="text-slate-500 text-[11px] mt-0.5">
-                    By <strong>{listing.seller_name}</strong> • {listing.house_label}
-                  </p>
-                  <p className="text-slate-600 text-[11px] mt-1.5 line-clamp-2">
-                    {listing.description || 'Authentic homestyle dish prepared with care.'}
-                  </p>
-                  <div className="mt-2 text-[11px] text-slate-500">
-                    Portion: <strong className="text-slate-700">{listing.portion_size}</strong> ({listing.quantity_available} left)
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      listing.status === 'ready'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : listing.status === 'preparing'
-                        ? 'bg-amber-100 text-amber-800'
-                        : 'bg-slate-200 text-slate-700'
-                    }`}
-                  >
-                    {listing.status}
-                  </span>
-
-                  <button
-                    onClick={() => handleDeleteListing(listing.id)}
-                    disabled={actionInProgressId === listing.id}
-                    className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-xl flex items-center gap-1 transition-colors"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Listing</span>
-                  </button>
-                </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-bold">Total Platform Users</span>
+                <Users className="w-4 h-4 text-slate-500" />
               </div>
-            ))}
+              <div className="text-3xl font-black text-slate-900">{stats?.total_users || 0}</div>
+              <div className="text-[11px] text-slate-400">Buyers & Cooks combined</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-bold">Active Kitchens</span>
+                <ChefHat className="w-4 h-4 text-amber-500" />
+              </div>
+              <div className="text-3xl font-black text-amber-600">{stats?.active_sellers || 0}</div>
+              <div className="text-[11px] text-slate-400">Verified household cooks</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-bold">Live Food Listings</span>
+                <ShoppingBag className="w-4 h-4 text-emerald-500" />
+              </div>
+              <div className="text-3xl font-black text-emerald-700">{stats?.available_listings || 0}</div>
+              <div className="text-[11px] text-slate-400">{stats?.ready_for_pickup || 0} ready right now</div>
+            </div>
+
+            <div className="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
+              <div className="flex items-center justify-between text-slate-400">
+                <span className="text-xs font-bold">Total Shared Volume</span>
+                <TrendingUp className="w-4 h-4 text-blue-500" />
+              </div>
+              <div className="text-3xl font-black text-blue-700">₹{stats?.total_gmv_rupees || 0}</div>
+              <div className="text-[11px] text-slate-400">{stats?.completed_transactions || 0} completed orders</div>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Tab: Reservations Audit */}
-      {activeTab === 'reservations' && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Reservations & Community Transactions</h3>
-            <p className="text-xs text-slate-500">
-              Audit trail of neighbor-to-neighbor meal pickup requests and confirmations.
-            </p>
+      {/* SELLERS TAB */}
+      {activeTab === 'sellers' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 text-sm">Verified Household Cooks</h3>
+            <div className="relative w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search cook or kitchen..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs"
+              />
+            </div>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-xs text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-3 px-3">Reservation ID</th>
-                  <th className="py-3 px-3">Meal</th>
-                  <th className="py-3 px-3">Buyer</th>
-                  <th className="py-3 px-3">Quantity</th>
-                  <th className="py-3 px-3">Amount</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3">Timestamp</th>
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-4">Cook Name</th>
+                  <th className="py-3 px-4">Kitchen Name</th>
+                  <th className="py-3 px-4">Email & Phone</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Moderation Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {reservationsList.map((res) => (
-                  <tr key={res.id} className="hover:bg-slate-50/60">
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400">{res.id.slice(0, 8)}...</td>
-                    <td className="py-3 px-3 font-bold text-slate-900">{res.listing?.food_name || 'Homemade Meal'}</td>
-                    <td className="py-3 px-3 text-slate-700">
-                      <div>{res.buyer_name}</div>
-                      <div className="text-[10px] text-slate-400">{res.buyer_phone || 'N/A'}</div>
-                    </td>
-                    <td className="py-3 px-3 text-slate-800 font-semibold">{res.quantity}x</td>
-                    <td className="py-3 px-3 font-bold text-slate-900">
-                      ₹{(res.total_price || (res.listing?.price ? res.listing.price * res.quantity : 0)).toFixed(0)}
-                    </td>
-                    <td className="py-3 px-3">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                        {res.status || res.reservation_status}
+                {sellers.map((s) => (
+                  <tr key={s.id} className="hover:bg-slate-50/50">
+                    <td className="py-3 px-4 font-bold text-slate-900">{s.full_name}</td>
+                    <td className="py-3 px-4 text-slate-700">{s.kitchen_name || 'Home Kitchen'}</td>
+                    <td className="py-3 px-4 text-slate-500">{s.email} • {s.phone || 'N/A'}</td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          s.account_status === 'active'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-rose-100 text-rose-800'
+                        }`}
+                      >
+                        {s.account_status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-slate-400 text-[11px]">
-                      {new Date(res.created_at).toLocaleString()}
+                    <td className="py-3 px-4 text-right space-x-2">
+                      {s.account_status === 'active' ? (
+                        <button
+                          onClick={() => handleVerifySeller(s.id, 'suspended')}
+                          disabled={actionInProgressId === s.id}
+                          className="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold transition-colors cursor-pointer"
+                        >
+                          Suspend
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleVerifySeller(s.id, 'approved')}
+                          disabled={actionInProgressId === s.id}
+                          className="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-bold transition-colors cursor-pointer"
+                        >
+                          Approve
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -594,33 +327,119 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
         </div>
       )}
 
-      {/* Tab: Reports & Moderation */}
-      {activeTab === 'reports' && (
-        <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm space-y-4">
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Community Safety & Reports</h3>
-            <p className="text-xs text-slate-500">
-              Buyer and seller safety notifications, quality feedback, and moderation requests.
-            </p>
+      {/* LISTINGS TAB */}
+      {activeTab === 'listings' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-bold text-slate-900 text-sm">Active & Recent Food Listings</h3>
+            <div className="relative w-64">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search dishes or sellers..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs"
+              />
+            </div>
           </div>
 
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-4">Dish</th>
+                  <th className="py-3 px-4">Seller</th>
+                  <th className="py-3 px-4">Price</th>
+                  <th className="py-3 px-4">Portions</th>
+                  <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Emergency Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filteredListings.map((l) => (
+                  <tr key={l.id} className="hover:bg-slate-50/50">
+                    <td className="py-3 px-4 font-bold text-slate-900">{l.food_name}</td>
+                    <td className="py-3 px-4 text-slate-700">{l.seller_name}</td>
+                    <td className="py-3 px-4 font-semibold text-emerald-800">₹{l.price}</td>
+                    <td className="py-3 px-4 text-slate-600">{l.quantity_available || l.quantity}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 uppercase">
+                        {l.availability_status || l.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => handleDeleteListing(l.id)}
+                        disabled={actionInProgressId === l.id}
+                        className="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-100 font-bold transition-colors cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                        <span>Delete</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* RESERVATIONS TAB */}
+      {activeTab === 'reservations' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100">
+            <h3 className="font-bold text-slate-900 text-sm">Platform Reservation Log</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-bold uppercase tracking-wider text-[10px]">
+                <tr>
+                  <th className="py-3 px-4">Order ID</th>
+                  <th className="py-3 px-4">Dish Name</th>
+                  <th className="py-3 px-4">Buyer</th>
+                  <th className="py-3 px-4">Portions</th>
+                  <th className="py-3 px-4">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {reservationsList.map((r) => (
+                  <tr key={r.id} className="hover:bg-slate-50/50">
+                    <td className="py-3 px-4 font-mono text-slate-400">#{r.id.slice(0, 8)}</td>
+                    <td className="py-3 px-4 font-bold text-slate-900">{r.food_name || 'Homemade Meal'}</td>
+                    <td className="py-3 px-4 text-slate-700">{r.buyer_name}</td>
+                    <td className="py-3 px-4 font-bold">{r.quantity}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase">
+                        {r.reservation_status || r.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* REPORTS TAB */}
+      {activeTab === 'reports' && (
+        <div className="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 space-y-4">
+          <h3 className="font-bold text-slate-900 text-sm">Community Safety & Moderation Reports</h3>
           {reportsList.length === 0 ? (
-            <div className="p-12 text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200 text-xs text-slate-500">
-              <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-              <span>No active reports or flags. Community food sharing is running smoothly!</span>
+            <div className="p-8 text-center text-slate-400 text-xs">
+              ✓ No active community reports pending review.
             </div>
           ) : (
             <div className="space-y-3">
               {reportsList.map((rep) => (
-                <div key={rep.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs flex items-center justify-between">
-                  <div>
-                    <span className="font-bold text-rose-800">Report #{rep.id.slice(0, 6)}</span>
-                    <p className="text-slate-700 mt-1">{rep.reason}</p>
-                    <span className="text-[10px] text-slate-400">{new Date(rep.created_at).toLocaleString()}</span>
+                <div key={rep.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-rose-700">Reason: {rep.reason}</span>
+                    <span className="text-slate-400 text-[10px]">{rep.created_at}</span>
                   </div>
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                    {rep.status}
-                  </span>
+                  <div className="text-slate-600">Report ID: #{rep.id.slice(0, 8)} • Status: {rep.status}</div>
                 </div>
               ))}
             </div>
@@ -630,4 +449,3 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
     </div>
   );
 };
-

@@ -1,21 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Listing, ListingStatus, UserRole } from './types';
+import { User, Listing, ListingStatus, UserRole, Reservation } from './types';
 import { api } from './services/api';
 import { useGeolocation, PRESET_LOCATIONS } from './hooks/useGeolocation';
 import { useRealtimeFeed } from './hooks/useRealtimeFeed';
 import { Navbar } from './components/Navbar';
+import { LandingPage } from './components/LandingPage';
 import { BuyerDashboard } from './components/BuyerDashboard';
 import { SellerDashboard } from './components/SellerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FoodDetailModal } from './components/FoodDetailModal';
 import { AuthModal } from './components/AuthModal';
-import { Sparkles, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { Sparkles, ShieldCheck, Heart, Leaf, Utensils } from 'lucide-react';
 
 export function App() {
-  const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeRoleView, setActiveRoleView] = useState<UserRole>('BUYER');
+  const [currentNav, setCurrentNav] = useState<'landing' | 'explore' | 'map' | 'reservations' | 'seller' | 'admin' | 'profile'>('landing');
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalInitialRole, setAuthModalInitialRole] = useState<UserRole>('BUYER');
 
   // Geolocation
   const { location: buyerLocation, requestRealGPS, setManualLocation } = useGeolocation();
@@ -31,38 +33,22 @@ export function App() {
   const [isLoadingListings, setIsLoadingListings] = useState<boolean>(true);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const [isSeeding, setIsSeeding] = useState<boolean>(false);
+  const [myReservationsCount, setMyReservationsCount] = useState<number>(0);
 
   // Live Toast Notification
   const [toast, setToast] = useState<{ id: string; message: string; type: 'ready' | 'info' | 'reserve' } | null>(null);
 
-  // Load Session and Users on Startup
+  // Load Session on Startup
   useEffect(() => {
     async function loadInitialSession() {
       try {
-        const uList = await api.getUsers();
-        setUsers(uList);
-
-        // Check if there is an existing session
-        try {
-          const me = await api.getMe();
-          setCurrentUser(me);
-          setActiveRoleView(me.role);
-          return;
-        } catch {
-          // No active JWT, check localStorage fallback or pick default
-        }
-
-        if (uList.length > 0) {
-          const savedId = localStorage.getItem('foodshare_user_id');
-          const defaultUser =
-            uList.find((u) => u.id === savedId) ||
-            uList.find((u) => u.role === 'BUYER') ||
-            uList[0];
-          setCurrentUser(defaultUser);
-          setActiveRoleView(defaultUser.role);
-        }
-      } catch (e) {
-        console.error('Failed to load initial session:', e);
+        const me = await api.getMe();
+        setCurrentUser(me);
+        setActiveRoleView(me.role);
+        if (me.role === 'SELLER') setCurrentNav('seller');
+        else if (me.role === 'ADMIN') setCurrentNav('admin');
+      } catch {
+        // Guest user mode - stays on landing
       }
     }
     loadInitialSession();
@@ -92,11 +78,34 @@ export function App() {
     fetchNearbyListings();
   }, [fetchNearbyListings]);
 
+  // Load active reservations count for current user
+  const refreshReservationCount = useCallback(async () => {
+    if (!currentUser) {
+      setMyReservationsCount(0);
+      return;
+    }
+    try {
+      const reservations = await api.getMyReservations();
+      setMyReservationsCount(reservations.length);
+    } catch {
+      // Ignored if unauthenticated
+    }
+  }, [currentUser]);
+
+  useEffect(() => {
+    refreshReservationCount();
+  }, [refreshReservationCount]);
+
   // Handle Real-Time WebSocket Events
   const handleRealtimeEvent = useCallback((event: string, item: Listing) => {
     console.log(`[Realtime Event] ${event}:`, item?.food_name);
 
-    if (event === 'listing_created' || event === 'listing_status_changed' || event === 'listing_reserved' || event === 'listing_cancelled') {
+    if (
+      event === 'listing_created' ||
+      event === 'listing_status_changed' ||
+      event === 'listing_reserved' ||
+      event === 'listing_cancelled'
+    ) {
       if (item.status === 'ready') {
         setToast({
           id: Math.random().toString(),
@@ -112,7 +121,7 @@ export function App() {
       } else if (item.status === 'sold_out') {
         setToast({
           id: Math.random().toString(),
-          message: `🍽️ "${item.food_name}" is now SOLD OUT`,
+          message: `🍽️ "${item.food_name}" is now sold out`,
           type: 'info'
         });
       }
@@ -138,16 +147,17 @@ export function App() {
         }
         return current;
       });
+
+      refreshReservationCount();
     } else if (event === 'listing_deleted') {
-      // Remove deleted listing from map immediately
       setListings((prev) => prev.filter((l) => l.id !== (item as any)?.id));
       setToast({
         id: Math.random().toString(),
-        message: `Listing removed by administrator`,
+        message: 'A food listing was removed by administration.',
         type: 'info'
       });
     }
-  }, [statusFilter]);
+  }, [statusFilter, refreshReservationCount]);
 
   // Real-Time Feed Hook
   const { isConnected: isWsConnected } = useRealtimeFeed({
@@ -170,12 +180,17 @@ export function App() {
   const handleAuthSuccess = (user: User) => {
     setCurrentUser(user);
     setActiveRoleView(user.role);
+    if (user.role === 'SELLER') setCurrentNav('seller');
+    else if (user.role === 'ADMIN') setCurrentNav('admin');
+    else setCurrentNav('explore');
+
     setToast({
       id: Math.random().toString(),
       message: `Signed in as ${user.full_name} (${user.role})`,
       type: 'info'
     });
     fetchNearbyListings();
+    refreshReservationCount();
   };
 
   // Sign Out Handler
@@ -183,7 +198,8 @@ export function App() {
     api.logout();
     setCurrentUser(null);
     setActiveRoleView('BUYER');
-    setIsAuthModalOpen(true);
+    setCurrentNav('landing');
+    setMyReservationsCount(0);
     setToast({
       id: Math.random().toString(),
       message: 'Logged out successfully',
@@ -191,19 +207,10 @@ export function App() {
     });
   };
 
-  // Role View Switching with Security Guard
-  const handleRoleViewChange = (role: UserRole) => {
-    if (role === 'ADMIN' && currentUser?.role !== 'ADMIN') {
-      alert('Unauthorized: Admin command center requires administrator privileges (admin@foodnearby.in).');
-      setIsAuthModalOpen(true);
-      return;
-    }
-    setActiveRoleView(role);
-  };
-
-  // Handle Quick Reservation
+  // Quick Reserve Handler
   const handleQuickReserve = async (listing: Listing) => {
     if (!currentUser) {
+      setAuthModalInitialRole('BUYER');
       setIsAuthModalOpen(true);
       return;
     }
@@ -211,9 +218,10 @@ export function App() {
       const res = await api.reserveListing(listing.id, 1, currentUser?.phone);
       setSelectedListing(res.listing);
       await fetchNearbyListings();
+      await refreshReservationCount();
       setToast({
         id: Math.random().toString(),
-        message: `✅ Successfully reserved ${listing.food_name}! Exact pickup location unlocked.`,
+        message: `✅ Reserved ${listing.food_name}! Door address unlocked.`,
         type: 'reserve'
       });
     } catch (err: any) {
@@ -221,15 +229,17 @@ export function App() {
     }
   };
 
-  // Handle Detailed Reservation Modal
+  // Detailed Modal Reserve
   const handleModalReserve = async (listingId: string, quantity: number, phone?: string) => {
     if (!currentUser) {
+      setAuthModalInitialRole('BUYER');
       setIsAuthModalOpen(true);
       return;
     }
     const res = await api.reserveListing(listingId, quantity, phone);
     setSelectedListing(res.listing);
     await fetchNearbyListings();
+    await refreshReservationCount();
     setToast({
       id: Math.random().toString(),
       message: `🎉 Food Reserved! Exact house address and pickup instructions revealed.`,
@@ -237,19 +247,20 @@ export function App() {
     });
   };
 
-  // Handle Reservation Cancellation
+  // Cancel Reservation
   const handleCancelReservation = async (listingId: string, reservationId?: string) => {
     const updated = await api.cancelReservation(listingId, reservationId);
     setSelectedListing(updated);
     await fetchNearbyListings();
+    await refreshReservationCount();
     setToast({
       id: Math.random().toString(),
-      message: `Reservation cancelled. Meal is back on the market.`,
+      message: 'Reservation cancelled. Portion restored to kitchen.',
       type: 'info'
     });
   };
 
-  // Seed authentic dishes
+  // Seed sample authentic Kerala dishes
   const handleSeedData = async () => {
     setIsSeeding(true);
     try {
@@ -257,7 +268,7 @@ export function App() {
       await fetchNearbyListings();
       setToast({
         id: Math.random().toString(),
-        message: `✨ Fresh Kerala dishes seeded around your GPS coordinates!`,
+        message: `✨ Authentic Kerala dishes seeded around ${buyerLocation.addressName || 'your coordinates'}!`,
         type: 'info'
       });
     } catch (e: any) {
@@ -277,26 +288,29 @@ export function App() {
     }
   };
 
+  // Open Auth Modal with initial role
+  const handleOpenAuthModal = (initialTab: 'buyer' | 'seller' | 'admin' = 'buyer') => {
+    setAuthModalInitialRole(initialTab === 'seller' ? 'SELLER' : initialTab === 'admin' ? 'ADMIN' : 'BUYER');
+    setIsAuthModalOpen(true);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-emerald-700 selection:text-white">
       {/* Top Navigation */}
       <Navbar
-        users={users}
         currentUser={currentUser}
-        onSelectUser={(u) => {
-          setCurrentUser(u);
-          setActiveRoleView(u.role);
-          localStorage.setItem('foodshare_user_id', u.id);
-        }}
         activeRoleView={activeRoleView}
-        onRoleViewChange={handleRoleViewChange}
+        currentNav={currentNav}
+        onNavigate={setCurrentNav}
         isWsConnected={isWsConnected}
         buyerLocation={buyerLocation}
         onSelectPresetLocation={(loc) => setManualLocation(loc.lat, loc.lng, loc.name)}
+        onRequestGPS={requestRealGPS}
         onSeedData={handleSeedData}
         isSeeding={isSeeding}
-        onOpenAuthModal={() => setIsAuthModalOpen(true)}
+        onOpenAuthModal={handleOpenAuthModal}
         onLogout={handleLogout}
+        reservationCount={myReservationsCount}
       />
 
       {/* Floating Real-Time Live Notification Toast */}
@@ -305,24 +319,24 @@ export function App() {
           <div
             className={`p-4 rounded-2xl shadow-xl border flex items-start gap-3 backdrop-blur-md ${
               toast.type === 'ready'
-                ? 'bg-emerald-600 text-white border-emerald-500 shadow-emerald-600/30'
+                ? 'bg-emerald-800 text-white border-emerald-600 shadow-emerald-950/20'
                 : toast.type === 'reserve'
-                ? 'bg-blue-600 text-white border-blue-500 shadow-blue-600/30'
-                : 'bg-slate-900 text-white border-slate-700 shadow-slate-900/40'
+                ? 'bg-blue-800 text-white border-blue-600 shadow-blue-950/20'
+                : 'bg-slate-900 text-white border-slate-700 shadow-slate-950/20'
             }`}
           >
-            <span className="p-1 bg-white/20 rounded-lg flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
+            <span className="p-1.5 bg-white/20 rounded-xl flex-shrink-0">
+              <Sparkles className="w-4 h-4 text-white" />
             </span>
-            <div className="flex-1 text-xs">
-              <div className="font-bold text-white/90 uppercase tracking-wider text-[10px]">
-                Real-Time 3D Map Update
+            <div className="flex-1 text-xs text-left">
+              <div className="font-bold text-white/80 uppercase tracking-wider text-[10px]">
+                Real-Time Live Update
               </div>
               <div className="font-semibold mt-0.5 leading-snug">{toast.message}</div>
             </div>
             <button
               onClick={() => setToast(null)}
-              className="text-white/70 hover:text-white text-xs font-bold ml-1"
+              className="text-white/70 hover:text-white text-xs font-bold ml-1 cursor-pointer"
             >
               ✕
             </button>
@@ -330,9 +344,25 @@ export function App() {
         </div>
       )}
 
-      {/* Main Workspace with Strict Role View Routing */}
+      {/* Main Content Workspace */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-5">
-        {activeRoleView === 'BUYER' && (
+        {currentNav === 'landing' && (
+          <LandingPage
+            listings={listings}
+            buyerLocation={buyerLocation}
+            onExploreFood={() => setCurrentNav('explore')}
+            onOpenMap={() => setCurrentNav('map')}
+            onBecomeSeller={() => {
+              if (currentUser) setCurrentNav('seller');
+              else handleOpenAuthModal('seller');
+            }}
+            onSelectListing={handleOpenDetail}
+            onOpenAuthModal={handleOpenAuthModal}
+            onSelectLocationPreset={(loc) => setManualLocation(loc.lat, loc.lng, loc.name)}
+          />
+        )}
+
+        {(currentNav === 'explore' || currentNav === 'map' || currentNav === 'reservations' || currentNav === 'profile') && (
           <BuyerDashboard
             currentUser={currentUser}
             buyerLocation={buyerLocation}
@@ -351,10 +381,13 @@ export function App() {
             onMapClickLocation={(lat, lng) => setManualLocation(lat, lng, 'Pinned Map Location')}
             onRequestGPS={requestRealGPS}
             isLoading={isLoadingListings}
+            activeTab={currentNav === 'map' ? 'map' : currentNav === 'reservations' ? 'reservations' : currentNav === 'profile' ? 'profile' : 'explore'}
+            onTabChange={(tab) => setCurrentNav(tab)}
+            onOpenAuthModal={() => handleOpenAuthModal('buyer')}
           />
         )}
 
-        {activeRoleView === 'SELLER' && (
+        {currentNav === 'seller' && (
           <SellerDashboard
             currentUserId={currentUser?.id || 'seller-lakshmi'}
             sellerGPS={buyerLocation}
@@ -363,7 +396,7 @@ export function App() {
           />
         )}
 
-        {activeRoleView === 'ADMIN' && (
+        {currentNav === 'admin' && (
           <AdminDashboard
             currentUser={currentUser}
             onRefreshData={fetchNearbyListings}
@@ -376,11 +409,11 @@ export function App() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
         onAuthSuccess={handleAuthSuccess}
-        initialRole={activeRoleView}
+        initialRole={authModalInitialRole}
         currentGPS={buyerLocation}
       />
 
-      {/* Food Detail Modal / Bottom Sheet */}
+      {/* Food Detail Modal */}
       {selectedListing && (
         <FoodDetailModal
           listing={selectedListing}
@@ -391,19 +424,37 @@ export function App() {
         />
       )}
 
-      {/* Footer Info */}
-      <footer className="bg-white border-t border-slate-200/80 py-4 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>FoodNearby Hyperlocal Platform • Kerala Homestyle Food Sharing</span>
+      {/* Professional Footer */}
+      <footer className="bg-white border-t border-slate-200/80 py-8 text-xs text-slate-500 mt-auto">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="w-8 h-8 rounded-xl bg-emerald-800 text-white font-bold flex items-center justify-center text-sm shadow-xs">
+                🍲
+              </span>
+              <span className="font-extrabold text-slate-900 text-sm">SharePlate</span>
+              <span className="text-slate-400">•</span>
+              <span>Hyperlocal Homemade Food Sharing Platform</span>
+            </div>
+
+            <div className="flex items-center gap-4 text-slate-500 font-medium">
+              <button onClick={() => setCurrentNav('landing')} className="hover:text-emerald-800 cursor-pointer">Home</button>
+              <button onClick={() => setCurrentNav('explore')} className="hover:text-emerald-800 cursor-pointer">Explore Food</button>
+              <button onClick={() => setCurrentNav('map')} className="hover:text-emerald-800 cursor-pointer">Live 3D Map</button>
+              <button onClick={() => handleOpenAuthModal('seller')} className="hover:text-emerald-800 cursor-pointer">Become a Host</button>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-slate-400">
-            <span>Residential Privacy Obfuscation Active</span>
-            <span>•</span>
-            <span>MapLibre 3D WebGL Vector Engine</span>
-            <span>•</span>
-            <span>Strict Role-Based Access Control</span>
+
+          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2 text-slate-400 text-[11px]">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
+              <span>Residential Privacy Obfuscation Protected</span>
+              <span>•</span>
+              <span>MapLibre 3D Vector Engine</span>
+            </div>
+            <div>
+              © 2026 SharePlate. Connecting neighbourhood kitchens with hungry neighbors.
+            </div>
           </div>
         </div>
       </footer>
