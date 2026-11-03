@@ -1,6 +1,6 @@
 import React from 'react';
 import { Listing } from '../types';
-import { Clock, MapPin, ChefHat, Navigation, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Clock, ChefHat, Navigation, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface FoodCardProps {
   listing: Listing;

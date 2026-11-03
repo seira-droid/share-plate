@@ -2,20 +2,14 @@ import React, { useState } from 'react';
 import { Listing } from '../types';
 import {
   X,
-  MapPin,
   Clock,
   ShieldCheck,
   ChefHat,
-  CheckCircle2,
-  AlertTriangle,
-  Phone,
   Navigation,
   ExternalLink,
-  Flame,
   Minus,
   Plus,
-  Lock,
-  Utensils
+  Lock
 } from 'lucide-react';
 
 interface FoodDetailModalProps {

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import { Listing, GPSLocation } from '../types';
-import { Shield, Clock, ChefHat, Navigation, ExternalLink, BookmarkPlus } from 'lucide-react';
+import { Navigation } from 'lucide-react';
 
 interface BuyerMapProps {
   buyerLocation: GPSLocation;

@@ -3,7 +3,6 @@ import { Listing, GPSLocation } from '../types';
 import {
   Search,
   MapPin,
-  Sparkles,
   ChefHat,
   ShieldCheck,
   Heart,
@@ -11,7 +10,6 @@ import {
   ArrowRight,
   Leaf,
   Navigation,
-  CheckCircle2,
   Users,
   Utensils
 } from 'lucide-react';
@@ -505,6 +503,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               "The live map is brilliant. When my hot appam and stew is ready on the stove, I press one button. Neighbors see the pulsing green marker and come over while it is steaming hot."
             </p>
           </div>
+        </div>
+      </section>
+
+      {/* Community Join Callout */}
+      <section className="max-w-4xl mx-auto px-4 text-center space-y-4 pt-4">
+        <h3 className="text-xl sm:text-2xl font-black text-slate-900">
+          Ready to experience fresh neighbourhood food?
+        </h3>
+        <p className="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto">
+          Sign up today to discover hot dishes cooking right around your corner, or register your kitchen to start sharing.
+        </p>
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={onOpenAuthModal}
+            className="px-6 py-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs rounded-2xl shadow-md transition-all cursor-pointer"
+          >
+            Create Free Account / Sign In
+          </button>
+          <button
+            onClick={onExploreFood}
+            className="px-6 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl transition-all cursor-pointer"
+          >
+            Browse Nearby Dishes First
+          </button>
         </div>
       </section>
     </div>

@@ -22,7 +22,11 @@ export function useRealtimeFeed({
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<any>(null);
   const onListingEventRef = useRef(onListingEvent);
-  onListingEventRef.current = onListingEvent;
+  const connectRef = useRef<() => void>(() => {});
+
+  useEffect(() => {
+    onListingEventRef.current = onListingEvent;
+  }, [onListingEvent]);
 
   const connect = useCallback(() => {
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
@@ -92,7 +96,7 @@ export function useRealtimeFeed({
         // Auto-reconnect after 3 seconds
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
+          connectRef.current();
         }, 3000);
       };
 
@@ -105,6 +109,10 @@ export function useRealtimeFeed({
       console.error('Failed to instantiate WebSocket:', e);
     }
   }, [userId, lat, lng, radiusKm]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Keep subscription in sync when lat/lng/radiusKm changes
   useEffect(() => {

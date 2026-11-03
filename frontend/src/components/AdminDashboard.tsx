@@ -7,17 +7,9 @@ import {
   ChefHat,
   ShoppingBag,
   TrendingUp,
-  AlertTriangle,
-  CheckCircle2,
-  XCircle,
   Trash2,
-  Clock,
-  Sparkles,
   RefreshCw,
-  Search,
-  SlidersHorizontal,
-  DollarSign,
-  ArrowRight
+  Search
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -35,24 +27,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
   const [loading, setLoading] = useState<boolean>(true);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>('');
-
-  // Access check
-  if (!currentUser || currentUser.role !== 'ADMIN') {
-    return (
-      <div className="p-12 text-center bg-white rounded-3xl border border-rose-200 space-y-4 max-w-lg mx-auto my-12 shadow-xl">
-        <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center text-3xl">
-          🛡️
-        </div>
-        <h3 className="font-extrabold text-xl text-rose-950">Administrative Access Required</h3>
-        <p className="text-slate-500 text-xs leading-relaxed">
-          The Admin Control Center is restricted to authorized platform administrators only (HTTP 403 Forbidden). Please sign in using an administrator account.
-        </p>
-        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-          Demo Admin: <code className="font-mono text-emerald-800">admin@foodnearby.in</code>
-        </div>
-      </div>
-    );
-  }
 
   const loadAdminData = async () => {
     setLoading(true);
@@ -77,8 +51,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
   };
 
   useEffect(() => {
-    loadAdminData();
-  }, []);
+    if (currentUser?.role === 'ADMIN') {
+      loadAdminData();
+    }
+  }, [currentUser]);
 
   const handleVerifySeller = async (sellerId: string, status: 'approved' | 'suspended') => {
     setActionInProgressId(sellerId);
@@ -129,6 +105,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ currentUser, onR
         l.category.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [listingsList, searchTerm]);
+
+  // Access check
+  if (!currentUser || currentUser.role !== 'ADMIN') {
+    return (
+      <div className="p-12 text-center bg-white rounded-3xl border border-rose-200 space-y-4 max-w-lg mx-auto my-12 shadow-xl">
+        <div className="w-16 h-16 rounded-3xl bg-rose-50 text-rose-600 mx-auto flex items-center justify-center text-3xl">
+          🛡️
+        </div>
+        <h3 className="font-extrabold text-xl text-rose-950">Administrative Access Required</h3>
+        <p className="text-slate-500 text-xs leading-relaxed">
+          The Admin Control Center is restricted to authorized platform administrators only (HTTP 403 Forbidden). Please sign in using an administrator account.
+        </p>
+        <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+          Demo Admin: <code className="font-mono text-emerald-800">admin@foodnearby.in</code>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 pb-12 text-left">

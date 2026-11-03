@@ -1,5 +1,14 @@
 import os
+import sys
 import uvicorn
+
+# Ensure utf-8 encoding on Windows console
+if sys.platform.startswith("win"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     host = os.getenv("HOST", "0.0.0.0")
@@ -12,4 +21,5 @@ if __name__ == "__main__":
     print(f"👉 Live WebSocket Feed:     ws://localhost:{port}/ws/live-feed")
     print("=" * 70)
     uvicorn.run("backend.main:app", host=host, port=port, reload=False)
+
 

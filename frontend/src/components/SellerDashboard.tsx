@@ -1,25 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import type { Listing, ListingStatus, GPSLocation } from '../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import type { Listing, GPSLocation } from '../types';
 import { api } from '../services/api';
 import {
   Plus,
-  ChefHat,
-  Sparkles,
-  Navigation,
   X,
   Flame,
-  Utensils,
-  Home,
   Package,
   Clock,
   CheckCircle2,
-  Trash2,
-  AlertCircle,
-  Phone,
-  ArrowRight,
-  RefreshCw,
-  SlidersHorizontal,
-  BookmarkCheck
+  RefreshCw
 } from 'lucide-react';
 
 interface SellerDashboardProps {
@@ -136,7 +125,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     'Side gate entrance. Press buzzer 14B. Meals packed in thermal bags.'
   );
 
-  const fetchMyListings = async () => {
+  const fetchMyListings = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getMyListings(currentUserId);
@@ -146,11 +135,11 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUserId]);
 
   useEffect(() => {
     fetchMyListings();
-  }, [currentUserId]);
+  }, [fetchMyListings]);
 
   // Apply a preset recipe
   const handleApplyPreset = (preset: typeof INDIAN_MENU_PRESETS[0]) => {
@@ -295,7 +284,19 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
         </div>
 
         <div className="p-4 bg-white rounded-3xl border border-slate-200/80 shadow-xs space-y-1">
-          <div className="text-xs font-semibold text-slate-500">Kitchen GPS Area</div>
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-500">
+            <span>Kitchen GPS Area</span>
+            {onRequestGPS && (
+              <button
+                type="button"
+                onClick={onRequestGPS}
+                className="text-[10px] text-amber-700 hover:text-amber-800 font-bold underline cursor-pointer"
+                title="Detect kitchen GPS coordinates"
+              >
+                Update GPS
+              </button>
+            )}
+          </div>
           <div className="text-base font-bold text-slate-800 truncate">
             📍 {sellerGPS.addressName || 'Kochi'}
           </div>
@@ -486,6 +487,17 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({
                   value={foodName}
                   onChange={(e) => setFoodName(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-sm focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-slate-700 block mb-1">Kitchen / House Display Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. House #14B (Amma's Kitchen)"
+                  value={houseLabel}
+                  onChange={(e) => setHouseLabel(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
                 />
               </div>
 

@@ -4,16 +4,7 @@ import { Listing, GPSLocation } from '../types';
 import {
   Compass,
   Navigation,
-  Layers,
-  Sparkles,
-  MapPin,
-  ExternalLink,
-  ChefHat,
-  Package,
-  RotateCcw,
-  Sliders,
-  ChevronRight,
-  Maximize2
+  Sparkles
 } from 'lucide-react';
 
 interface MapLibre3DMapProps {
@@ -36,6 +27,67 @@ const MAP_STYLES = {
   fallback: 'https://demotiles.maplibre.org/style.json'
 };
 
+// Pure helper to create GeoJSON circle for radius
+function updateRadiusCircle(map: maplibregl.Map, lng: number, lat: number, radiusKm: number) {
+  const points = 64;
+  const coords: [number, number][] = [];
+  const distanceX = radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180));
+  const distanceY = radiusKm / 110.574;
+
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    const x = distanceX * Math.cos(theta);
+    const y = distanceY * Math.sin(theta);
+    coords.push([lng + x, lat + y]);
+  }
+  coords.push(coords[0]);
+
+  const geojson: GeoJSON.FeatureCollection = {
+    type: 'FeatureCollection',
+    features: [
+      {
+        type: 'Feature',
+        properties: {},
+        geometry: {
+          type: 'Polygon',
+          coordinates: [coords]
+        }
+      }
+    ]
+  };
+
+  if (map.getSource('radius-circle')) {
+    (map.getSource('radius-circle') as maplibregl.GeoJSONSource).setData(geojson);
+  } else {
+    map.addSource('radius-circle', {
+      type: 'geojson',
+      data: geojson
+    });
+
+    map.addLayer({
+      id: 'radius-circle-fill',
+      type: 'fill',
+      source: 'radius-circle',
+      paint: {
+        'fill-color': '#2563eb',
+        'fill-opacity': 0.08
+      }
+    });
+
+    map.addLayer({
+      id: 'radius-circle-line',
+      type: 'line',
+      source: 'radius-circle',
+      paint: {
+        'line-color': '#3b82f6',
+        'line-width': 1.5,
+        'line-dasharray': [3, 2],
+        'line-opacity': 0.6
+      }
+    });
+  }
+}
+
 export const MapLibre3DMap: React.FC<MapLibre3DMapProps> = ({
   buyerLocation,
   listings,
@@ -52,7 +104,6 @@ export const MapLibre3DMap: React.FC<MapLibre3DMapProps> = ({
   const buyerMarkerRef = useRef<any>(null);
   const [pitch, setPitch] = useState<number>(60);
   const [bearing, setBearing] = useState<number>(-15);
-  const [currentStyle, setCurrentStyle] = useState<'liberty' | 'bright' | 'positron'>('liberty');
   const [isMapLoaded, setIsMapLoaded] = useState<boolean>(false);
   const [activePopupListing, setActivePopupListing] = useState<Listing | null>(null);
 
@@ -260,67 +311,6 @@ export const MapLibre3DMap: React.FC<MapLibre3DMapProps> = ({
       }
     });
   }, [listings, isMapLoaded]);
-
-  // Helper to create GeoJSON circle for radius
-  const updateRadiusCircle = (map: maplibregl.Map, lng: number, lat: number, radiusKm: number) => {
-    const points = 64;
-    const coords: [number, number][] = [];
-    const distanceX = radiusKm / (111.32 * Math.cos((lat * Math.PI) / 180));
-    const distanceY = radiusKm / 110.574;
-
-    for (let i = 0; i < points; i++) {
-      const theta = (i / points) * (2 * Math.PI);
-      const x = distanceX * Math.cos(theta);
-      const y = distanceY * Math.sin(theta);
-      coords.push([lng + x, lat + y]);
-    }
-    coords.push(coords[0]);
-
-    const geojson: GeoJSON.FeatureCollection = {
-      type: 'FeatureCollection',
-      features: [
-        {
-          type: 'Feature',
-          properties: {},
-          geometry: {
-            type: 'Polygon',
-            coordinates: [coords]
-          }
-        }
-      ]
-    };
-
-    if (map.getSource('radius-circle')) {
-      (map.getSource('radius-circle') as maplibregl.GeoJSONSource).setData(geojson);
-    } else {
-      map.addSource('radius-circle', {
-        type: 'geojson',
-        data: geojson
-      });
-
-      map.addLayer({
-        id: 'radius-circle-fill',
-        type: 'fill',
-        source: 'radius-circle',
-        paint: {
-          'fill-color': '#2563eb',
-          'fill-opacity': 0.08
-        }
-      });
-
-      map.addLayer({
-        id: 'radius-circle-line',
-        type: 'line',
-        source: 'radius-circle',
-        paint: {
-          'line-color': '#3b82f6',
-          'line-width': 1.5,
-          'line-dasharray': [3, 2],
-          'line-opacity': 0.6
-        }
-      });
-    }
-  };
 
   // 3D Tilt adjustment
   const handleSetPitch = (newPitch: number) => {

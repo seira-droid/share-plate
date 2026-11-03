@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { User, Listing, GPSLocation, Reservation } from '../types';
 import { FoodCard } from './FoodCard';
 import { MapLibre3DMap } from './MapLibre3DMap';
@@ -8,20 +8,14 @@ import {
   Compass,
   Search,
   MapPin,
-  Clock,
-  Heart,
   SlidersHorizontal,
-  CheckCircle2,
   BookmarkCheck,
   User as UserIcon,
   Navigation,
   ExternalLink,
-  Flame,
   Utensils,
-  Layers,
   ArrowRight,
   RefreshCw,
-  Phone,
   ShieldCheck,
   X
 } from 'lucide-react';
@@ -103,7 +97,7 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
   const [sortBy, setSortBy] = useState<'distance' | 'price' | 'ready'>('distance');
 
   // Load reservations when the reservations tab opens
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     if (!currentUser) return;
     setLoadingReservations(true);
     try {
@@ -114,13 +108,13 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
     } finally {
       setLoadingReservations(false);
     }
-  };
+  }, [currentUser]);
 
   useEffect(() => {
     if (currentTab === 'reservations') {
       loadReservations();
     }
-  }, [currentTab, currentUser]);
+  }, [currentTab, loadReservations]);
 
   // Filtered & Sorted Listings
   const processedListings = useMemo(() => {
@@ -265,14 +259,20 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
             {/* Quick Filter Chips (Ready Now, Pure Veg, Sorting) */}
             <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100 text-xs">
               <button
-                onClick={() => setReadyOnly(!readyOnly)}
+                onClick={() => {
+                  const nextVal = !readyOnly;
+                  setReadyOnly(nextVal);
+                  if (onStatusChange) {
+                    onStatusChange(nextVal ? 'ready' : 'all');
+                  }
+                }}
                 className={`px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
-                  readyOnly
+                  readyOnly || statusFilter === 'ready'
                     ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
                     : 'bg-slate-50 text-slate-600 border border-slate-200 hover:bg-slate-100'
                 }`}
               >
-                <span className={`w-2 h-2 rounded-full ${readyOnly ? 'bg-emerald-600 animate-pulse' : 'bg-slate-400'}`} />
+                <span className={`w-2 h-2 rounded-full ${readyOnly || statusFilter === 'ready' ? 'bg-emerald-600 animate-pulse' : 'bg-slate-400'}`} />
                 <span>Ready for Pickup Now</span>
               </button>
 
@@ -440,6 +440,17 @@ export const BuyerDashboard: React.FC<BuyerDashboardProps> = ({
                 <Compass className="w-4 h-4 text-emerald-700" />
                 <span>Live Interactive Map</span>
               </div>
+
+              {onRequestGPS && (
+                <button
+                  onClick={onRequestGPS}
+                  className="px-2.5 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  title="Detect and center map on current GPS location"
+                >
+                  <Navigation className="w-3 h-3 text-emerald-700" />
+                  <span className="hidden sm:inline">Locate Me</span>
+                </button>
+              )}
 
               {/* Status Legend */}
               <div className="hidden sm:flex items-center gap-3 text-[11px] text-slate-600 border-l border-slate-200 pl-3">

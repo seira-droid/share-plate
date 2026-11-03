@@ -6,7 +6,6 @@ import {
   ChefHat,
   Compass,
   LogOut,
-  LogIn,
   User as UserIcon,
   Sparkles,
   Shield,
@@ -18,7 +17,7 @@ import {
 
 interface NavbarProps {
   currentUser: User | null;
-  activeRoleView: UserRole;
+  activeRoleView?: UserRole;
   currentNav: 'landing' | 'explore' | 'map' | 'reservations' | 'seller' | 'admin' | 'profile';
   onNavigate: (nav: 'landing' | 'explore' | 'map' | 'reservations' | 'seller' | 'admin' | 'profile') => void;
   isWsConnected: boolean;
@@ -34,7 +33,6 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({
   currentUser,
-  activeRoleView,
   currentNav,
   onNavigate,
   isWsConnected,

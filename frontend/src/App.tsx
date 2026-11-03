@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { User, Listing, ListingStatus, UserRole, Reservation } from './types';
+import { User, Listing, UserRole } from './types';
 import { api } from './services/api';
-import { useGeolocation, PRESET_LOCATIONS } from './hooks/useGeolocation';
+import { useGeolocation } from './hooks/useGeolocation';
 import { useRealtimeFeed } from './hooks/useRealtimeFeed';
 import { Navbar } from './components/Navbar';
 import { LandingPage } from './components/LandingPage';
@@ -10,7 +10,7 @@ import { SellerDashboard } from './components/SellerDashboard';
 import { AdminDashboard } from './components/AdminDashboard';
 import { FoodDetailModal } from './components/FoodDetailModal';
 import { AuthModal } from './components/AuthModal';
-import { Sparkles, ShieldCheck, Heart, Leaf, Utensils } from 'lucide-react';
+import { Sparkles, ShieldCheck } from 'lucide-react';
 
 export function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
